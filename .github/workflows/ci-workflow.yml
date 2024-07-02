@@ -1,0 +1,52 @@
+name: Continuous Integration
+on: [push]                      # Will make the workflow run every time you push to any branch
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest      # Sets the build environment a machine with the latest Ubuntu installed
+    steps:
+    - uses: actions/checkout@v4 # Adds a step to checkout the repository code
+
+    - name: Build c-sharp
+      run: dotnet build
+
+    - name: Install dependancies
+      working-directory: ./DotnetTemplate.Web
+      run: npm install
+
+    - name: Build TypeScript
+      working-directory: ./DotnetTemplate.Web
+      run: npm run build
+
+    - name: Run TS linter
+      working-directory: ./DotnetTemplate.Web
+      run: npm run lint
+
+    - name: Run TS tests
+      working-directory: ./DotnetTemplate.Web
+      run: npm t
+
+    - name: Run c-sharp tests
+      run: dotnet test
+
+    - name: Post to slack
+      id: slack
+      uses: slackapi/slack-github-action@v1.26.0
+      with:
+        payload: |
+          {
+            "text": "Your MR pipeline has finished! Result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}",
+            "blocks": [
+              {
+                "type": "section",
+                "text": {
+                  "type": "mrkdwn",
+                  "text": "GitHub Action build result: ${{ job.status }}\n${{ github.event.pull_request.html_url || github.event.head_commit.url }}"
+                }
+              }
+            ]
+          }
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK

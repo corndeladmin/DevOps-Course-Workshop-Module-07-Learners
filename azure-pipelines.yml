@@ -1,0 +1,52 @@
+# Here we specify what causes the pipeline to run; in this case changes to any branch
+trigger:
+- '*'
+
+# Here we specify what type of machine (agent) to run on
+pool:
+  vmImage: 'ubuntu-latest'
+
+# And here we specify a list of "jobs"
+jobs:
+  - job: buildAndTestCsharp
+    displayName: "Build C Sharp and Run Tests"
+    # Each job has a sequence of steps to run
+    steps:
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'test'
+  - job: buildTypeScript
+    displayName: Build TypeScript
+    steps:
+    - task: Npm@1
+      inputs:
+        workingDir: ./DotnetTemplate.Web
+        command: 'install'
+    - task: Npm@1
+      inputs:
+        command: 'custom'
+        customCommand: 'run build'
+        workingDir: ./DotnetTemplate.Web
+    - task: Npm@1
+      inputs:
+        command: 'custom'
+        customCommand: 'run lint'
+        workingDir: ./DotnetTemplate.Web
+    - task: Npm@1
+      inputs:
+        command: 'custom'
+        customCommand: 't'
+        workingDir: ./DotnetTemplate.Web
+  - job: publishArtefact
+    displayName: Publish Artefact
+    steps:
+    - script: dotnet publish -c Release -o ./dist
+      displayName: Generate the executable
+    - task: PublishPipelineArtifact@1
+      displayName: Publish the artefact
+      inputs:
+        targetPath: '$(Pipeline.Workspace)'
+        publishLocation: 'pipeline'
